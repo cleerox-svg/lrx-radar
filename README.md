@@ -93,6 +93,8 @@ This repository now includes:
 These files prevent accidental Bun detection caused by JavaScript assets in
 `lrx_radar/web/`.
 
+If you deploy on Railway, `railway.toml` is included to force Dockerfile builds.
+
 ## API overview
 
 - `GET /api/v1/health` - service status
