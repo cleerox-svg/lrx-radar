@@ -26,14 +26,17 @@ Client UI (static dashboard)
 3. **Normalize** - azimuth radians, normalized intensity, derived quality score
 4. **Idempotency** - deterministic event hash (`event_id`) and SQLite primary key dedupe
 5. **Store** - indexed scan records for dashboard/API reads
-6. **Observe** - pipeline metrics (accepted, processed, duplicates, queue depth, errors)
+6. **Retry** - exponential backoff retries for transient processing failures
+7. **Quarantine** - failed records are persisted to a dead-letter table after retry exhaustion
+8. **Observe** - pipeline metrics (accepted, processed, duplicates, retried, DLQ depth)
 
 ## UI/UX highlights
 
 - Design token based styling (spacing, color, typography, radius)
-- Clean dashboard hierarchy with cards, ingestion form, recent scans, and alerts
+- Clean dashboard hierarchy with cards, ingestion form, trend charts, scans, alerts, and DLQ view
 - Empty/error/loading states for better operability
 - Theme toggle with persisted preference (light/dark)
+- Server-side scans/alerts filters and pagination controls
 - Accessibility basics: semantic structure, labels, focus styles, `aria-live` status text
 
 ## Project layout
@@ -81,8 +84,9 @@ Open `http://127.0.0.1:8000`.
 
 - `GET /api/v1/health` - service status
 - `POST /api/v1/ingest` - queue a batch of radar scans
-- `GET /api/v1/scans?limit=25` - latest stored scans
-- `GET /api/v1/alerts?quality_below=0.45&limit=20` - quality alerts
+- `GET /api/v1/scans?limit=25&offset=0&source_id=&min_quality=` - paginated, filterable scans
+- `GET /api/v1/alerts?quality_below=0.45&limit=20&offset=0` - paginated, filterable alerts
+- `GET /api/v1/dead-letters?limit=20&offset=0` - failed records that exhausted retries
 - `GET /api/v1/metrics` - ingestion pipeline metrics
 - `GET /api/v1/dashboard` - combined payload for UI
 
@@ -116,6 +120,6 @@ pytest
 ## Next improvement ideas
 
 - Replace SQLite with PostgreSQL + partitioning when throughput grows
-- Add dead-letter queue and retry policies for invalid or failed records
-- Add charting (time-series and geospatial heatmap) to the dashboard
+- Move queue processing to an external broker (SQS/Rabbit/Kafka) for horizontal scaling
+- Add geospatial map overlays and richer time-window trend analytics
 - Add authn/authz and per-source quotas before multi-tenant rollout

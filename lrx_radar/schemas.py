@@ -85,11 +85,27 @@ class ProcessedScan(BaseModel):
     tags: list[str] = Field(default_factory=list)
 
 
+class DeadLetterRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: int
+    event_id: str = Field(min_length=64, max_length=64)
+    scan_id: str
+    source_id: str
+    payload_json: str
+    error_message: str
+    failed_at: datetime
+    retry_attempts: int = Field(ge=0)
+
+
 class PipelineMetrics(BaseModel):
     queue_depth: int = 0
     accepted: int = 0
     processed: int = 0
     duplicates: int = 0
+    retried: int = 0
+    dead_lettered: int = 0
     rejected: int = 0
+    dead_letter_depth: int = 0
     last_error: str | None = None
     last_processed_at: datetime | None = None
