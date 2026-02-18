@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lrx-radar"
+version = "0.1.0"
+description = "Queue-based radar ingestion and observability dashboard."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi",
+  "uvicorn",
+  "pydantic",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "httpx",
+]
+
+[tool.setuptools.packages.find]
+include = ["lrx_radar*"]
+
+[tool.setuptools.package-data]
+lrx_radar = ["web/*.html", "web/*.css", "web/*.js"]
