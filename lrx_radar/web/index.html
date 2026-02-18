@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LRX Radar Console</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">◉</span>
+        <div>
+          <h1>LRX Radar Console</h1>
+          <p>Ingestion pipeline + quality monitoring dashboard</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button id="refreshButton" class="button button-secondary">Refresh</button>
+        <button id="themeToggleButton" class="button button-ghost" aria-label="Toggle color theme">
+          Toggle theme
+        </button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section id="overview" class="panel">
+        <div class="panel-heading">
+          <h2>Operations overview</h2>
+          <p>Queue health, processing throughput, and data quality at a glance.</p>
+        </div>
+        <div class="card-grid">
+          <article class="metric-card">
+            <h3>Accepted</h3>
+            <p id="acceptedMetric" class="metric">--</p>
+          </article>
+          <article class="metric-card">
+            <h3>Processed</h3>
+            <p id="processedMetric" class="metric">--</p>
+          </article>
+          <article class="metric-card">
+            <h3>Duplicates</h3>
+            <p id="duplicatesMetric" class="metric">--</p>
+          </article>
+          <article class="metric-card">
+            <h3>Queue depth</h3>
+            <p id="queueMetric" class="metric">--</p>
+          </article>
+          <article class="metric-card">
+            <h3>Stored scans</h3>
+            <p id="storedMetric" class="metric">--</p>
+          </article>
+          <article class="metric-card">
+            <h3>Rejected</h3>
+            <p id="rejectedMetric" class="metric">--</p>
+          </article>
+          <article class="metric-card">
+            <h3>Retried</h3>
+            <p id="retriedMetric" class="metric">--</p>
+          </article>
+          <article class="metric-card">
+            <h3>Dead-letter depth</h3>
+            <p id="deadLetterDepthMetric" class="metric">--</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="trends" class="panel">
+        <div class="panel-heading">
+          <h2>Signal trends</h2>
+          <p>Quick visual context for quality trajectory and source distribution.</p>
+        </div>
+        <div class="chart-grid">
+          <article class="chart-card">
+            <h3>Recent quality trend</h3>
+            <canvas id="qualityTrendCanvas" width="540" height="220"></canvas>
+          </article>
+          <article class="chart-card">
+            <h3>Scans by source (current page)</h3>
+            <canvas id="sourceMixCanvas" width="540" height="220"></canvas>
+          </article>
+        </div>
+      </section>
+
+      <section id="ingestion" class="panel">
+        <div class="panel-heading">
+          <h2>Quick ingest generator</h2>
+          <p>Use this to simulate source traffic and verify ingestion quality signals.</p>
+        </div>
+        <form id="ingestForm" class="form-grid">
+          <label>
+            Source ID
+            <input type="text" name="source_id" value="station-alpha" minlength="2" maxlength="64" required />
+          </label>
+          <label>
+            Batch size
+            <input type="number" name="batch_size" min="1" max="100" value="10" required />
+          </label>
+          <label>
+            Base range (m)
+            <input type="number" name="base_range_m" min="100" max="200000" value="20000" required />
+          </label>
+          <label>
+            Quality hint (0-1)
+            <input type="number" name="quality_hint" min="0" max="1" step="0.05" value="0.75" />
+          </label>
+          <button type="submit" class="button button-primary">Send sample batch</button>
+        </form>
+        <p id="formMessage" class="inline-message" aria-live="polite"></p>
+      </section>
+
+      <section id="scans" class="panel">
+        <div class="panel-heading">
+          <h2>Recent scans</h2>
+          <p>Server-side pagination and filters keep this table responsive at larger volumes.</p>
+        </div>
+        <div class="controls-row">
+          <label>
+            Source filter
+            <input type="text" id="scansSourceFilter" placeholder="station-alpha" />
+          </label>
+          <label>
+            Minimum quality
+            <select id="scansMinQuality">
+              <option value="">Any</option>
+              <option value="0.3">0.30</option>
+              <option value="0.45">0.45</option>
+              <option value="0.7">0.70</option>
+            </select>
+          </label>
+          <label>
+            Page size
+            <select id="scansPageSize">
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="40">40</option>
+            </select>
+          </label>
+          <button id="scansApplyButton" class="button button-secondary" type="button">Apply filters</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Captured</th>
+                <th>Source</th>
+                <th>Range (m)</th>
+                <th>Intensity</th>
+                <th>Quality</th>
+                <th>Tags</th>
+              </tr>
+            </thead>
+            <tbody id="scansBody"></tbody>
+          </table>
+          <p id="scansEmpty" class="empty-state">No scans yet. Submit a sample batch to begin.</p>
+        </div>
+        <div class="pager">
+          <button id="scansPrevButton" class="button button-ghost" type="button">Previous</button>
+          <p id="scansPageInfo" class="pager-info">Page 1</p>
+          <button id="scansNextButton" class="button button-ghost" type="button">Next</button>
+        </div>
+      </section>
+
+      <section id="alerts" class="panel">
+        <div class="panel-heading">
+          <h2>Low-quality alerts</h2>
+          <p>Scans below quality 0.45 are surfaced here for triage.</p>
+        </div>
+        <div class="controls-row">
+          <label>
+            Source filter
+            <input type="text" id="alertsSourceFilter" placeholder="station-alpha" />
+          </label>
+          <label>
+            Quality threshold
+            <input type="number" id="alertsThreshold" min="0" max="1" step="0.05" value="0.45" />
+          </label>
+          <label>
+            Page size
+            <select id="alertsPageSize">
+              <option value="5">5</option>
+              <option value="10" selected>10</option>
+              <option value="20">20</option>
+            </select>
+          </label>
+          <button id="alertsApplyButton" class="button button-secondary" type="button">Apply filters</button>
+        </div>
+        <ul id="alertsList" class="alert-list"></ul>
+        <p id="alertsEmpty" class="empty-state">No active alerts.</p>
+        <div class="pager">
+          <button id="alertsPrevButton" class="button button-ghost" type="button">Previous</button>
+          <p id="alertsPageInfo" class="pager-info">Page 1</p>
+          <button id="alertsNextButton" class="button button-ghost" type="button">Next</button>
+        </div>
+      </section>
+
+      <section id="deadLetters" class="panel">
+        <div class="panel-heading">
+          <h2>Dead-letter queue</h2>
+          <p>Records that exhausted retries appear here for investigation.</p>
+        </div>
+        <ul id="deadLettersList" class="dead-letter-list"></ul>
+        <p id="deadLettersEmpty" class="empty-state">No dead-letter records.</p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>LRX Radar starter console • built for rapid UI + ingestion iteration</p>
+    </footer>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
