@@ -1,0 +1,335 @@
+:root {
+  --bg: #f4f7fb;
+  --panel: #ffffff;
+  --text: #1f2430;
+  --muted: #5f6b7a;
+  --border: #d7deea;
+  --brand: #2e6df6;
+  --brand-strong: #1f57ca;
+  --danger: #d13b3b;
+  --warning: #c98a00;
+  --success: #1b8d4a;
+  --shadow: 0 10px 28px rgba(24, 39, 75, 0.08);
+  --radius: 14px;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --font: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+html[data-theme="dark"] {
+  --bg: #0e1118;
+  --panel: #171d27;
+  --text: #ecf0f7;
+  --muted: #9eaac0;
+  --border: #2b3342;
+  --brand: #5d8fff;
+  --brand-strong: #7ba4ff;
+  --danger: #ff6f6f;
+  --warning: #ffc44a;
+  --success: #43c67c;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--text);
+  background: radial-gradient(circle at top, color-mix(in oklab, var(--brand) 8%, var(--bg)), var(--bg) 45%);
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  backdrop-filter: blur(10px);
+  background: color-mix(in oklab, var(--bg) 70%, transparent);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.brand p {
+  margin: var(--space-1) 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.brand-mark {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  font-size: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.topbar-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.button {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.55rem 0.95rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform 0.14s ease, background-color 0.14s ease, border-color 0.14s ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+}
+
+.button-primary {
+  color: #fff;
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+}
+
+.button-secondary {
+  border-color: var(--border);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.button-ghost {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--space-5);
+}
+
+.panel-heading h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.panel-heading p {
+  margin: var(--space-2) 0 var(--space-4);
+  color: var(--muted);
+  font-size: 0.93rem;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+
+.metric-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: var(--space-4);
+  background: color-mix(in oklab, var(--panel) 80%, var(--brand) 6%);
+}
+
+.metric-card h3 {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.metric {
+  margin: var(--space-2) 0 0;
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-3);
+  align-items: end;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+input {
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  padding: 0.55rem 0.7rem;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.94rem;
+}
+
+input:focus-visible,
+button:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--brand) 60%, white);
+  outline-offset: 2px;
+}
+
+.inline-message {
+  min-height: 1.2rem;
+  margin-top: var(--space-3);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.7rem 0.55rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.quality-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.16rem 0.52rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: 1px solid currentColor;
+}
+
+.quality-high {
+  color: var(--success);
+}
+
+.quality-medium {
+  color: var(--warning);
+}
+
+.quality-low {
+  color: var(--danger);
+}
+
+.alert-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.alert-item {
+  border: 1px solid color-mix(in oklab, var(--danger) 38%, var(--border));
+  border-radius: 10px;
+  padding: var(--space-3);
+  background: color-mix(in oklab, var(--danger) 7%, var(--panel));
+}
+
+.alert-item h4 {
+  margin: 0 0 var(--space-2);
+  font-size: 0.9rem;
+}
+
+.alert-item p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.empty-state {
+  margin-top: var(--space-3);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.loading {
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--brand) 18%, transparent), transparent);
+  background-size: 200% 100%;
+  animation: pulse 1.4s infinite linear;
+  color: transparent;
+}
+
+@keyframes pulse {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.footer {
+  text-align: center;
+  padding: 0 var(--space-4) var(--space-6);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 720px) {
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .topbar-actions {
+    width: 100%;
+  }
+
+  .button {
+    width: 100%;
+  }
+}

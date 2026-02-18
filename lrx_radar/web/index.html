@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LRX Radar Console</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">◉</span>
+        <div>
+          <h1>LRX Radar Console</h1>
+          <p>Ingestion pipeline + quality monitoring dashboard</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button id="refreshButton" class="button button-secondary">Refresh</button>
+        <button id="themeToggleButton" class="button button-ghost" aria-label="Toggle color theme">
+          Toggle theme
+        </button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section id="overview" class="panel">
+        <div class="panel-heading">
+          <h2>Operations overview</h2>
+          <p>Queue health, processing throughput, and data quality at a glance.</p>
+        </div>
+        <div class="card-grid">
+          <article class="metric-card">
+            <h3>Accepted</h3>
+            <p id="acceptedMetric" class="metric">--</p>
+          </article>
+          <article class="metric-card">
+            <h3>Processed</h3>
+            <p id="processedMetric" class="metric">--</p>
+          </article>
+          <article class="metric-card">
+            <h3>Duplicates</h3>
+            <p id="duplicatesMetric" class="metric">--</p>
+          </article>
+          <article class="metric-card">
+            <h3>Queue depth</h3>
+            <p id="queueMetric" class="metric">--</p>
+          </article>
+          <article class="metric-card">
+            <h3>Stored scans</h3>
+            <p id="storedMetric" class="metric">--</p>
+          </article>
+          <article class="metric-card">
+            <h3>Rejected</h3>
+            <p id="rejectedMetric" class="metric">--</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="ingestion" class="panel">
+        <div class="panel-heading">
+          <h2>Quick ingest generator</h2>
+          <p>Use this to simulate source traffic and verify ingestion quality signals.</p>
+        </div>
+        <form id="ingestForm" class="form-grid">
+          <label>
+            Source ID
+            <input type="text" name="source_id" value="station-alpha" minlength="2" maxlength="64" required />
+          </label>
+          <label>
+            Batch size
+            <input type="number" name="batch_size" min="1" max="100" value="10" required />
+          </label>
+          <label>
+            Base range (m)
+            <input type="number" name="base_range_m" min="100" max="200000" value="20000" required />
+          </label>
+          <label>
+            Quality hint (0-1)
+            <input type="number" name="quality_hint" min="0" max="1" step="0.05" value="0.75" />
+          </label>
+          <button type="submit" class="button button-primary">Send sample batch</button>
+        </form>
+        <p id="formMessage" class="inline-message" aria-live="polite"></p>
+      </section>
+
+      <section id="scans" class="panel">
+        <div class="panel-heading">
+          <h2>Recent scans</h2>
+          <p>Newest scans appear first. Use quality to quickly spot weak returns.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Captured</th>
+                <th>Source</th>
+                <th>Range (m)</th>
+                <th>Intensity</th>
+                <th>Quality</th>
+                <th>Tags</th>
+              </tr>
+            </thead>
+            <tbody id="scansBody"></tbody>
+          </table>
+          <p id="scansEmpty" class="empty-state">No scans yet. Submit a sample batch to begin.</p>
+        </div>
+      </section>
+
+      <section id="alerts" class="panel">
+        <div class="panel-heading">
+          <h2>Low-quality alerts</h2>
+          <p>Scans below quality 0.45 are surfaced here for triage.</p>
+        </div>
+        <ul id="alertsList" class="alert-list"></ul>
+        <p id="alertsEmpty" class="empty-state">No active alerts.</p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>LRX Radar starter console • built for rapid UI + ingestion iteration</p>
+    </footer>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
