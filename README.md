@@ -80,6 +80,19 @@ uvicorn lrx_radar.app:app --reload
 
 Open `http://127.0.0.1:8000`.
 
+## Deployment notes (Bun lockfile error fix)
+
+If your GitHub-connected deploy platform reports a lockfile error like
+`bun.lockb is missing`, force Python build detection instead of Bun/Node.
+This repository now includes:
+
+- `Dockerfile` - explicit Python runtime + Uvicorn start command
+- `nixpacks.toml` - explicit Nixpacks Python setup/install/start phases
+- `Procfile` - explicit web process for platforms that honor Procfiles
+
+These files prevent accidental Bun detection caused by JavaScript assets in
+`lrx_radar/web/`.
+
 ## API overview
 
 - `GET /api/v1/health` - service status
