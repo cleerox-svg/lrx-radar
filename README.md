@@ -73,6 +73,12 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
+For local test tooling as well:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
 ### Run
 
 ```bash
@@ -95,6 +101,9 @@ These files prevent accidental Bun detection caused by JavaScript assets in
 `lrx_radar/web/`.
 
 If you deploy on Railway, `railway.toml` is included to force Dockerfile builds.
+
+For Cloudflare builds, set `PYTHON_VERSION=3.12` in project environment
+variables (or ensure `.python-version`/`.tool-versions` is respected).
 
 ## API overview
 
