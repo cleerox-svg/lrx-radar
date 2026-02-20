@@ -1,8 +1,16 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "lrx-radar-prototype",
+  "name": "lrx-radar",
+  "main": "src/worker.js",
   "compatibility_date": "2026-02-20",
   "assets": {
-    "directory": "./dist"
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "API_KEY_CONFIG": "dev-admin-key:admin:*",
+    "INGEST_QUOTA_PER_MINUTE": "2000",
+    "MAX_RETRIES": "2",
+    "CORS_ALLOWED_ORIGINS": "*"
   }
 }

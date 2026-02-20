@@ -118,6 +118,32 @@ variables (or ensure `.python-version`/`.tool-versions` is respected).
 If Cloudflare runs a deploy command (`npx wrangler deploy`), keep `wrangler.jsonc`
 in repo root so Wrangler can publish static assets from `dist/`.
 
+### Cloudflare-only deployment (frontend + backend in one Worker)
+
+This repository includes a Worker entrypoint at `src/worker.js` that serves both:
+
+- static UI assets
+- API endpoints under `/api/v1/*`
+
+Use these commands in Cloudflare Worker Git build settings:
+
+**Build command**
+
+```bash
+mkdir -p dist && cp -r lrx_radar/web/* dist/
+```
+
+**Deploy command**
+
+```bash
+npx wrangler deploy --config wrangler.jsonc
+```
+
+Optional (for persistent storage): add a D1 binding named `DB`.
+
+Optional (for queued ingestion): add a Queue producer binding named
+`INGEST_QUEUE` and configure this same Worker as consumer.
+
 ## Runtime configuration
 
 - `DATABASE_URL` - use `postgres://...` or `postgresql://...` for PostgreSQL mode
