@@ -2,8 +2,10 @@
 
 LRX-Radar is a lightweight radar ingestion and observability application with:
 
-- a queue-driven backend pipeline for validation, normalization, dedupe, and storage
-- a dashboard UI for ingestion monitoring, low-quality alerting, and fast smoke testing
+- pluggable brokered ingestion (in-memory or SQS)
+- PostgreSQL-ready partitioned storage (with SQLite fallback for local/dev)
+- API-key authn/authz and per-source ingest quotas
+- dashboard geospatial overlays and time-window trend analytics
 
 This scaffold is intended to accelerate both UX and backend iteration.
 
@@ -13,10 +15,10 @@ This scaffold is intended to accelerate both UX and backend iteration.
 Client UI (static dashboard)
         |
         v
- FastAPI /api/v1/ingest  ---->  asyncio.Queue  ---->  processing worker
+ FastAPI /api/v1/ingest  ---->  Broker (memory/SQS) ----> processing worker
         |                                                  |
         |                                                  v
-        +-------------------- /api/v1/* metrics/scans <--- SQLite store (idempotent)
+        +-------------------- /api/v1/* metrics/scans <--- PostgreSQL (partitioned) / SQLite
 ```
 
 ### Backend pipeline stages
@@ -24,16 +26,18 @@ Client UI (static dashboard)
 1. **Receive** - request accepted at `POST /api/v1/ingest`
 2. **Validate** - strict Pydantic input models (`schema_version`, range checks, tags)
 3. **Normalize** - azimuth radians, normalized intensity, derived quality score
-4. **Idempotency** - deterministic event hash (`event_id`) and SQLite primary key dedupe
-5. **Store** - indexed scan records for dashboard/API reads
-6. **Retry** - exponential backoff retries for transient processing failures
-7. **Quarantine** - failed records are persisted to a dead-letter table after retry exhaustion
-8. **Observe** - pipeline metrics (accepted, processed, duplicates, retried, DLQ depth)
+4. **Authorize** - API key role checks + source-scoped access controls
+5. **Quota** - per-source per-key ingest quotas (429 on exceed)
+6. **Idempotency** - deterministic event hash (`event_id`) dedupe
+7. **Store** - PostgreSQL partitioned writes (or SQLite fallback)
+8. **Retry** - exponential backoff retries for transient processing failures
+9. **Quarantine** - failed records are persisted to a dead-letter table after retry exhaustion
+10. **Observe** - pipeline metrics + trend + geospatial analytics
 
 ## UI/UX highlights
 
 - Design token based styling (spacing, color, typography, radius)
-- Clean dashboard hierarchy with cards, ingestion form, trend charts, scans, alerts, and DLQ view
+- Clean dashboard hierarchy with cards, ingestion form, trend charts, geo overlays, scans, alerts, and DLQ view
 - Empty/error/loading states for better operability
 - Theme toggle with persisted preference (light/dark)
 - Server-side scans/alerts filters and pagination controls
@@ -47,7 +51,11 @@ lrx_radar/
   schemas.py      # Input/output contracts (Pydantic)
   pipeline.py     # Normalization + quality scoring + event IDs
   service.py      # Async queue worker and runtime metrics
-  storage.py      # SQLite persistence and query helpers
+  storage.py           # SQLite persistence and query helpers
+  storage_postgres.py  # PostgreSQL partitioned persistence
+  broker.py            # In-memory + SQS broker backends
+  auth.py              # API keys, roles, and source quotas
+  store_factory.py     # SQLite/PostgreSQL store selection
   web/
     index.html    # Dashboard UI
     styles.css    # Design tokens + responsive styles
@@ -87,6 +95,8 @@ uvicorn lrx_radar.app:app --reload
 
 Open `http://127.0.0.1:8000`.
 
+Default API key for local use: `dev-admin-key`
+
 ## Deployment notes (Bun lockfile error fix)
 
 If your GitHub-connected deploy platform reports a lockfile error like
@@ -105,6 +115,15 @@ If you deploy on Railway, `railway.toml` is included to force Dockerfile builds.
 For Cloudflare builds, set `PYTHON_VERSION=3.12` in project environment
 variables (or ensure `.python-version`/`.tool-versions` is respected).
 
+## Runtime configuration
+
+- `DATABASE_URL` - use `postgres://...` or `postgresql://...` for PostgreSQL mode
+- `BROKER_BACKEND` - `memory` (default) or `sqs`
+- `SQS_QUEUE_URL` - required when `BROKER_BACKEND=sqs`
+- `API_KEY_CONFIG` - API key config string, e.g. `dev-admin-key:admin:*,reader:read:station-`
+- `INGEST_QUOTA_PER_MINUTE` - default per-source quota per key (default `2000`)
+- `SOURCE_QUOTAS` - source-specific overrides, e.g. `station-alpha=500,station-beta=1200`
+
 ## API overview
 
 - `GET /api/v1/health` - service status
@@ -113,7 +132,10 @@ variables (or ensure `.python-version`/`.tool-versions` is respected).
 - `GET /api/v1/alerts?quality_below=0.45&limit=20&offset=0` - paginated, filterable alerts
 - `GET /api/v1/dead-letters?limit=20&offset=0` - failed records that exhausted retries
 - `GET /api/v1/metrics` - ingestion pipeline metrics
+- `GET /api/v1/analytics/trends?window_minutes=120&bucket_minutes=5` - time-window trends
+- `GET /api/v1/analytics/geospatial?window_minutes=180&limit=300` - geo overlay points
 - `GET /api/v1/dashboard` - combined payload for UI
+- `GET /api/v1/auth/me` - current key role/scopes
 
 ### Ingest payload example
 
@@ -141,10 +163,3 @@ variables (or ensure `.python-version`/`.tool-versions` is respected).
 ```bash
 pytest
 ```
-
-## Next improvement ideas
-
-- Replace SQLite with PostgreSQL + partitioning when throughput grows
-- Move queue processing to an external broker (SQS/Rabbit/Kafka) for horizontal scaling
-- Add geospatial map overlays and richer time-window trend analytics
-- Add authn/authz and per-source quotas before multi-tenant rollout

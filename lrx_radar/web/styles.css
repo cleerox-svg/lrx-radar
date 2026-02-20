@@ -94,6 +94,22 @@ body {
 .topbar-actions {
   display: flex;
   gap: var(--space-2);
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.inline-control {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.inline-control input {
+  min-width: 180px;
+  font-size: 0.82rem;
+  padding: 0.45rem 0.55rem;
 }
 
 .button {

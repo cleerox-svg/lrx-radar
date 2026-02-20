@@ -12,12 +12,16 @@ dependencies = [
   "fastapi",
   "uvicorn",
   "pydantic",
+  "psycopg[binary]",
 ]
 
 [project.optional-dependencies]
 dev = [
   "pytest",
   "httpx",
+]
+broker_sqs = [
+  "boto3",
 ]
 
 [tool.setuptools.packages.find]
