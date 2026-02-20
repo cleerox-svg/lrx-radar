@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import AsyncIterator
 
 from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -35,6 +36,7 @@ def create_app(
     api_key_config: str | None = None,
     default_quota_per_minute: int | None = None,
     source_quota_config: str | None = None,
+    cors_allowed_origins: str | None = None,
     max_retries: int = 2,
     retry_delay_seconds: float = 0.2,
 ) -> FastAPI:
@@ -55,6 +57,7 @@ def create_app(
         else int(os.getenv("INGEST_QUOTA_PER_MINUTE", "2000"))
     )
     resolved_source_quota_config = source_quota_config or os.getenv("SOURCE_QUOTAS")
+    resolved_cors_allowed_origins = cors_allowed_origins or os.getenv("CORS_ALLOWED_ORIGINS", "*")
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -90,6 +93,15 @@ def create_app(
         description="Radar ingestion and dashboard service",
         version="0.1.0",
         lifespan=lifespan,
+    )
+    origin_tokens = [token.strip() for token in resolved_cors_allowed_origins.split(",") if token.strip()]
+    allowed_origins = ["*"] if not origin_tokens or "*" in origin_tokens else origin_tokens
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")

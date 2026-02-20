@@ -126,6 +126,7 @@ in repo root so Wrangler can publish static assets from `dist/`.
 - `API_KEY_CONFIG` - API key config string, e.g. `dev-admin-key:admin:*,reader:read:station-`
 - `INGEST_QUOTA_PER_MINUTE` - default per-source quota per key (default `2000`)
 - `SOURCE_QUOTAS` - source-specific overrides, e.g. `station-alpha=500,station-beta=1200`
+- `CORS_ALLOWED_ORIGINS` - comma-separated origins allowed by browser clients (default `*`)
 
 ## API overview
 
