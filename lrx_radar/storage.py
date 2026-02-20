@@ -200,6 +200,37 @@ class RadarStore:
             cursor = self._conn.execute(query, tuple(params))
             return [self._row_to_dict(row) for row in cursor.fetchall()]
 
+    def list_scans_in_window(
+        self,
+        *,
+        window_start_iso: str,
+        source_id: str | None = None,
+        limit: int = 5_000,
+        require_location: bool = False,
+    ) -> list[dict[str, Any]]:
+        where_clauses = ["captured_at >= ?"]
+        params: list[Any] = [window_start_iso]
+        if source_id:
+            where_clauses.append("source_id = ?")
+            params.append(source_id)
+        if require_location:
+            where_clauses.append("latitude IS NOT NULL")
+            where_clauses.append("longitude IS NOT NULL")
+        query = f"""
+            SELECT
+                event_id, schema_version, scan_id, source_id, captured_at, ingested_at,
+                azimuth_deg, azimuth_rad, range_m, intensity_dbz, normalized_intensity,
+                quality_score, latitude, longitude, tags_json
+            FROM scans
+            WHERE {' AND '.join(where_clauses)}
+            ORDER BY captured_at ASC
+            LIMIT ?
+        """
+        params.append(limit)
+        with self._lock:
+            cursor = self._conn.execute(query, tuple(params))
+            return [self._row_to_dict(row) for row in cursor.fetchall()]
+
     def count_dead_letters(self, source_id: str | None = None) -> int:
         query = "SELECT COUNT(*) AS c FROM dead_letters"
         params: list[Any] = []

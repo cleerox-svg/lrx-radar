@@ -16,6 +16,10 @@
         </div>
       </div>
       <div class="topbar-actions">
+        <label class="inline-control">
+          API key
+          <input id="apiKeyInput" type="password" value="dev-admin-key" />
+        </label>
         <button id="refreshButton" class="button button-secondary">Refresh</button>
         <button id="themeToggleButton" class="button button-ghost" aria-label="Toggle color theme">
           Toggle theme
@@ -68,16 +72,51 @@
       <section id="trends" class="panel">
         <div class="panel-heading">
           <h2>Signal trends</h2>
-          <p>Quick visual context for quality trajectory and source distribution.</p>
+          <p>Time-window analytics with geospatial overlays for triage and operations.</p>
+        </div>
+        <div class="controls-row">
+          <label>
+            Trend window (minutes)
+            <select id="trendWindowMinutes">
+              <option value="60">60</option>
+              <option value="120" selected>120</option>
+              <option value="360">360</option>
+              <option value="720">720</option>
+            </select>
+          </label>
+          <label>
+            Trend bucket (minutes)
+            <select id="trendBucketMinutes">
+              <option value="1">1</option>
+              <option value="5" selected>5</option>
+              <option value="15">15</option>
+              <option value="30">30</option>
+            </select>
+          </label>
+          <label>
+            Geo window (minutes)
+            <select id="geoWindowMinutes">
+              <option value="60">60</option>
+              <option value="180" selected>180</option>
+              <option value="720">720</option>
+            </select>
+          </label>
+          <button id="analyticsApplyButton" class="button button-secondary" type="button">
+            Update analytics
+          </button>
         </div>
         <div class="chart-grid">
           <article class="chart-card">
-            <h3>Recent quality trend</h3>
+            <h3>Windowed quality trend</h3>
             <canvas id="qualityTrendCanvas" width="540" height="220"></canvas>
           </article>
           <article class="chart-card">
-            <h3>Scans by source (current page)</h3>
+            <h3>Scans by source (window)</h3>
             <canvas id="sourceMixCanvas" width="540" height="220"></canvas>
+          </article>
+          <article class="chart-card">
+            <h3>Geospatial overlay</h3>
+            <canvas id="geoOverlayCanvas" width="540" height="240"></canvas>
           </article>
         </div>
       </section>

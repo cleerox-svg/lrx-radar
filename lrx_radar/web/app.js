@@ -1,4 +1,6 @@
 const API_BASE = "/api/v1";
+const THEME_KEY = "lrx-theme";
+const API_KEY_STORAGE = "lrx-api-key";
 
 const metricElements = {
   accepted: document.getElementById("acceptedMetric"),
@@ -13,6 +15,7 @@ const metricElements = {
 
 const refreshButton = document.getElementById("refreshButton");
 const themeToggleButton = document.getElementById("themeToggleButton");
+const apiKeyInput = document.getElementById("apiKeyInput");
 const ingestForm = document.getElementById("ingestForm");
 const formMessage = document.getElementById("formMessage");
 
@@ -39,12 +42,17 @@ const alertsPageInfo = document.getElementById("alertsPageInfo");
 const deadLettersList = document.getElementById("deadLettersList");
 const deadLettersEmpty = document.getElementById("deadLettersEmpty");
 
+const trendWindowMinutes = document.getElementById("trendWindowMinutes");
+const trendBucketMinutes = document.getElementById("trendBucketMinutes");
+const geoWindowMinutes = document.getElementById("geoWindowMinutes");
+const analyticsApplyButton = document.getElementById("analyticsApplyButton");
+
 const qualityTrendCanvas = document.getElementById("qualityTrendCanvas");
 const sourceMixCanvas = document.getElementById("sourceMixCanvas");
-
-const THEME_KEY = "lrx-theme";
+const geoOverlayCanvas = document.getElementById("geoOverlayCanvas");
 
 const state = {
+  apiKey: "dev-admin-key",
   scans: {
     limit: 20,
     offset: 0,
@@ -60,6 +68,14 @@ const state = {
     sourceId: "",
     qualityBelow: 0.45,
     items: [],
+  },
+  analytics: {
+    trendWindowMinutes: 120,
+    trendBucketMinutes: 5,
+    geoWindowMinutes: 180,
+    trendItems: [],
+    sourceMix: [],
+    geoPoints: [],
   },
 };
 
@@ -81,6 +97,17 @@ function loadPreferredTheme() {
   applyTheme(prefersDark ? "dark" : "light");
 }
 
+function loadApiKey() {
+  const stored = localStorage.getItem(API_KEY_STORAGE);
+  state.apiKey = stored || "dev-admin-key";
+  apiKeyInput.value = state.apiKey;
+}
+
+function persistApiKey() {
+  state.apiKey = apiKeyInput.value.trim() || "dev-admin-key";
+  localStorage.setItem(API_KEY_STORAGE, state.apiKey);
+}
+
 function setMetricLoading(loading) {
   Object.values(metricElements).forEach((node) => {
     node.classList.toggle("loading", loading);
@@ -91,7 +118,11 @@ function setMetricLoading(loading) {
 }
 
 async function fetchJson(url, options = undefined) {
-  const response = await fetch(url, options);
+  const headers = {
+    ...(options?.headers ?? {}),
+    "x-api-key": state.apiKey,
+  };
+  const response = await fetch(url, { ...(options ?? {}), headers });
   if (!response.ok) {
     const details = await response.text();
     throw new Error(`Request failed (${response.status}): ${details}`);
@@ -145,38 +176,17 @@ function renderScans(scans) {
     scansEmpty.classList.remove("hidden");
     return;
   }
-
   scansEmpty.classList.add("hidden");
   scans.forEach((scan) => {
     const row = document.createElement("tr");
-
-    const capturedCell = document.createElement("td");
-    capturedCell.textContent = formatTime(scan.captured_at);
-
-    const sourceCell = document.createElement("td");
-    sourceCell.textContent = scan.source_id;
-
-    const rangeCell = document.createElement("td");
-    rangeCell.textContent = Math.round(scan.range_m).toString();
-
-    const intensityCell = document.createElement("td");
-    intensityCell.textContent = Number(scan.intensity_dbz).toFixed(1);
-
-    const qualityCell = document.createElement("td");
-    const pill = document.createElement("span");
-    pill.className = `quality-pill ${qualityClass(scan.quality_score)}`;
-    pill.textContent = Number(scan.quality_score).toFixed(2);
-    qualityCell.appendChild(pill);
-
-    const tagsCell = document.createElement("td");
-    tagsCell.textContent = (scan.tags ?? []).join(", ") || "--";
-
-    row.appendChild(capturedCell);
-    row.appendChild(sourceCell);
-    row.appendChild(rangeCell);
-    row.appendChild(intensityCell);
-    row.appendChild(qualityCell);
-    row.appendChild(tagsCell);
+    row.innerHTML = `
+      <td>${formatTime(scan.captured_at)}</td>
+      <td>${scan.source_id}</td>
+      <td>${Math.round(scan.range_m)}</td>
+      <td>${Number(scan.intensity_dbz).toFixed(1)}</td>
+      <td><span class="quality-pill ${qualityClass(scan.quality_score)}">${Number(scan.quality_score).toFixed(2)}</span></td>
+      <td>${(scan.tags ?? []).join(", ") || "--"}</td>
+    `;
     scansBody.appendChild(row);
   });
 }
@@ -195,20 +205,14 @@ function renderAlerts(alerts) {
     alertsEmpty.classList.remove("hidden");
     return;
   }
-
   alertsEmpty.classList.add("hidden");
   alerts.forEach((alert) => {
     const item = document.createElement("li");
     item.className = "alert-item";
-
-    const title = document.createElement("h4");
-    title.textContent = `${alert.source_id} / ${alert.scan_id} - quality ${Number(alert.quality_score).toFixed(2)}`;
-
-    const details = document.createElement("p");
-    details.textContent = `Captured ${formatTime(alert.captured_at)} • Range ${Math.round(alert.range_m)} m • dBZ ${Number(alert.intensity_dbz).toFixed(1)}`;
-
-    item.appendChild(title);
-    item.appendChild(details);
+    item.innerHTML = `
+      <h4>${alert.source_id} / ${alert.scan_id} - quality ${Number(alert.quality_score).toFixed(2)}</h4>
+      <p>Captured ${formatTime(alert.captured_at)} • Range ${Math.round(alert.range_m)} m • dBZ ${Number(alert.intensity_dbz).toFixed(1)}</p>
+    `;
     alertsList.appendChild(item);
   });
 }
@@ -231,12 +235,10 @@ function renderDeadLetters(items) {
   items.forEach((item) => {
     const row = document.createElement("li");
     row.className = "dead-letter-item";
-    const title = document.createElement("h4");
-    title.textContent = `${item.source_id} / ${item.scan_id} - retries ${item.retry_attempts}`;
-    const details = document.createElement("p");
-    details.textContent = `${formatTime(item.failed_at)} • ${item.error_message}`;
-    row.appendChild(title);
-    row.appendChild(details);
+    row.innerHTML = `
+      <h4>${item.source_id} / ${item.scan_id} - retries ${item.retry_attempts}</h4>
+      <p>${formatTime(item.failed_at)} • ${item.error_message}</p>
+    `;
     deadLettersList.appendChild(row);
   });
 }
@@ -250,17 +252,14 @@ function drawPlaceholder(canvas, text) {
   ctx.fillText(text, canvas.width / 2, canvas.height / 2);
 }
 
-function drawQualityTrend(scans) {
-  if (!Array.isArray(scans) || scans.length < 2) {
-    drawPlaceholder(qualityTrendCanvas, "Need at least 2 scans for trend");
+function drawQualityTrend(items) {
+  if (!Array.isArray(items) || items.length < 2) {
+    drawPlaceholder(qualityTrendCanvas, "Need at least 2 buckets for trend");
     return;
   }
-
-  const series = [...scans].reverse();
   const ctx = qualityTrendCanvas.getContext("2d");
   const { width, height } = qualityTrendCanvas;
   const padding = 24;
-
   ctx.clearRect(0, 0, width, height);
   ctx.strokeStyle = "rgba(107, 128, 164, 0.35)";
   ctx.lineWidth = 1;
@@ -275,9 +274,9 @@ function drawQualityTrend(scans) {
   ctx.strokeStyle = "#2e6df6";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  series.forEach((scan, index) => {
-    const x = padding + ((width - padding * 2) / (series.length - 1)) * index;
-    const y = height - padding - Number(scan.quality_score) * (height - padding * 2);
+  items.forEach((item, index) => {
+    const x = padding + ((width - padding * 2) / (items.length - 1)) * index;
+    const y = height - padding - Number(item.avg_quality) * (height - padding * 2);
     if (index === 0) {
       ctx.moveTo(x, y);
     } else {
@@ -285,50 +284,71 @@ function drawQualityTrend(scans) {
     }
   });
   ctx.stroke();
-
-  ctx.fillStyle = "#2e6df6";
-  series.forEach((scan, index) => {
-    const x = padding + ((width - padding * 2) / (series.length - 1)) * index;
-    const y = height - padding - Number(scan.quality_score) * (height - padding * 2);
-    ctx.beginPath();
-    ctx.arc(x, y, 3, 0, Math.PI * 2);
-    ctx.fill();
-  });
 }
 
-function drawSourceMix(scans) {
-  if (!Array.isArray(scans) || scans.length === 0) {
-    drawPlaceholder(sourceMixCanvas, "No scans to chart");
+function drawSourceMix(sourceMix) {
+  if (!Array.isArray(sourceMix) || sourceMix.length === 0) {
+    drawPlaceholder(sourceMixCanvas, "No source mix data in window");
     return;
   }
-
-  const counts = new Map();
-  scans.forEach((scan) => {
-    counts.set(scan.source_id, (counts.get(scan.source_id) ?? 0) + 1);
-  });
-  const rows = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
-  const maxCount = rows[0][1];
-
+  const rows = [...sourceMix].slice(0, 6);
+  const maxCount = rows[0].count;
   const ctx = sourceMixCanvas.getContext("2d");
-  const { width, height } = sourceMixCanvas;
+  const { width } = sourceMixCanvas;
   const left = 92;
   const right = 20;
   const top = 20;
   const barHeight = 26;
   const gap = 12;
-
-  ctx.clearRect(0, 0, width, height);
+  ctx.clearRect(0, 0, sourceMixCanvas.width, sourceMixCanvas.height);
   ctx.font = "12px sans-serif";
-  rows.forEach(([source, count], index) => {
+  rows.forEach((row, index) => {
     const y = top + index * (barHeight + gap);
-    const barWidth = ((width - left - right) * count) / maxCount;
+    const barWidth = ((width - left - right) * row.count) / maxCount;
     ctx.fillStyle = "rgba(46, 109, 246, 0.85)";
     ctx.fillRect(left, y, barWidth, barHeight);
     ctx.fillStyle = "#6a768a";
     ctx.textAlign = "left";
-    ctx.fillText(source.slice(0, 12), 12, y + 17);
+    ctx.fillText(row.source_id.slice(0, 12), 12, y + 17);
     ctx.textAlign = "right";
-    ctx.fillText(String(count), width - 8, y + 17);
+    ctx.fillText(String(row.count), width - 8, y + 17);
+  });
+}
+
+function drawGeoOverlay(points) {
+  if (!Array.isArray(points) || points.length === 0) {
+    drawPlaceholder(geoOverlayCanvas, "No geospatial points in selected window");
+    return;
+  }
+  const ctx = geoOverlayCanvas.getContext("2d");
+  const { width, height } = geoOverlayCanvas;
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "rgba(120, 140, 170, 0.08)";
+  ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = "rgba(120, 140, 170, 0.25)";
+  for (let lon = -180; lon <= 180; lon += 60) {
+    const x = ((lon + 180) / 360) * width;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
+    ctx.stroke();
+  }
+  for (let lat = -60; lat <= 60; lat += 30) {
+    const y = ((90 - lat) / 180) * height;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+  }
+  points.forEach((point) => {
+    const x = ((Number(point.longitude) + 180) / 360) * width;
+    const y = ((90 - Number(point.latitude)) / 180) * height;
+    const quality = Number(point.quality_score);
+    const color = quality >= 0.7 ? "#1b8d4a" : quality >= 0.45 ? "#c98a00" : "#d13b3b";
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fill();
   });
 }
 
@@ -344,12 +364,19 @@ function syncAlertsFiltersFromUI() {
   state.alerts.limit = Number(alertsPageSize.value);
 }
 
+function syncAnalyticsFromUI() {
+  state.analytics.trendWindowMinutes = Number(trendWindowMinutes.value);
+  state.analytics.trendBucketMinutes = Number(trendBucketMinutes.value);
+  state.analytics.geoWindowMinutes = Number(geoWindowMinutes.value);
+}
+
 async function loadDashboard() {
   const loadId = activeLoadId + 1;
   activeLoadId = loadId;
   setMetricLoading(true);
   formMessage.textContent = "";
 
+  const sourceId = state.scans.sourceId || state.alerts.sourceId;
   const scansQuery = buildQuery({
     limit: state.scans.limit,
     offset: state.scans.offset,
@@ -362,32 +389,48 @@ async function loadDashboard() {
     offset: state.alerts.offset,
     source_id: state.alerts.sourceId,
   });
+  const trendQuery = buildQuery({
+    window_minutes: state.analytics.trendWindowMinutes,
+    bucket_minutes: state.analytics.trendBucketMinutes,
+    source_id: sourceId,
+  });
+  const geoQuery = buildQuery({
+    window_minutes: state.analytics.geoWindowMinutes,
+    limit: 500,
+    source_id: sourceId,
+  });
 
   try {
-    const [metrics, scansPayload, alertsPayload, deadLettersPayload] = await Promise.all([
+    const [metrics, scansPayload, alertsPayload, deadLettersPayload, trendsPayload, geoPayload] = await Promise.all([
       fetchJson(`${API_BASE}/metrics`),
       fetchJson(`${API_BASE}/scans?${scansQuery}`),
       fetchJson(`${API_BASE}/alerts?${alertsQuery}`),
-      fetchJson(`${API_BASE}/dead-letters?limit=5&offset=0`),
+      fetchJson(`${API_BASE}/dead-letters?limit=5&offset=0${sourceId ? `&source_id=${encodeURIComponent(sourceId)}` : ""}`),
+      fetchJson(`${API_BASE}/analytics/trends?${trendQuery}`),
+      fetchJson(`${API_BASE}/analytics/geospatial?${geoQuery}`),
     ]);
 
-    if (loadId !== activeLoadId) {
-      return;
-    }
+    if (loadId !== activeLoadId) return;
 
     renderMetrics(metrics);
     state.scans.total = Number(scansPayload.total ?? 0);
     state.scans.items = scansPayload.items ?? [];
     renderScans(state.scans.items);
     renderScansPager();
-    drawQualityTrend(state.scans.items);
-    drawSourceMix(state.scans.items);
 
     state.alerts.total = Number(alertsPayload.total ?? 0);
     state.alerts.items = alertsPayload.items ?? [];
     renderAlerts(state.alerts.items);
     renderAlertsPager();
+
     renderDeadLetters(deadLettersPayload.items ?? []);
+
+    state.analytics.trendItems = trendsPayload.items ?? [];
+    state.analytics.sourceMix = geoPayload.source_mix ?? [];
+    state.analytics.geoPoints = geoPayload.points ?? [];
+    drawQualityTrend(state.analytics.trendItems);
+    drawSourceMix(state.analytics.sourceMix);
+    drawGeoOverlay(state.analytics.geoPoints);
   } catch (error) {
     if (loadId === activeLoadId) {
       formMessage.textContent = `Unable to load dashboard data: ${error.message}`;
@@ -399,12 +442,27 @@ async function loadDashboard() {
   }
 }
 
+function stationCenterForSource(sourceId) {
+  const known = {
+    "station-alpha": { latitude: 14.5995, longitude: 120.9842 },
+    "station-beta": { latitude: 35.6764, longitude: 139.6500 },
+    "station-gamma": { latitude: 1.3521, longitude: 103.8198 },
+  };
+  if (known[sourceId]) return known[sourceId];
+  const hash = [...sourceId].reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return {
+    latitude: ((hash % 14000) / 100) - 70,
+    longitude: ((hash % 30000) / 100) - 150,
+  };
+}
+
 function buildSampleBatch(formData) {
   const sourceId = String(formData.get("source_id")).trim();
   const batchSize = Number(formData.get("batch_size"));
   const baseRange = Number(formData.get("base_range_m"));
   const qualityHint = Number(formData.get("quality_hint"));
   const now = Date.now();
+  const center = stationCenterForSource(sourceId);
 
   const scans = [];
   for (let i = 0; i < batchSize; i += 1) {
@@ -414,6 +472,8 @@ function buildSampleBatch(formData) {
     const intensity = -20 + Math.random() * 70;
     const scanId = `${sourceId}-${now}-${i}`;
     const normalizedHint = Number.isFinite(qualityHint) ? Math.max(0, Math.min(1, qualityHint)) : 0.7;
+    const latitude = center.latitude + (Math.random() * 0.4 - 0.2);
+    const longitude = center.longitude + (Math.random() * 0.4 - 0.2);
 
     scans.push({
       schema_version: "1.0",
@@ -424,6 +484,7 @@ function buildSampleBatch(formData) {
       range_m: Number(rangeM.toFixed(2)),
       intensity_dbz: Number(intensity.toFixed(2)),
       quality_hint: normalizedHint,
+      location: { latitude: Number(latitude.toFixed(5)), longitude: Number(longitude.toFixed(5)) },
       tags: intensity < -5 ? ["weak-signal"] : ["nominal"],
     });
   }
@@ -437,10 +498,8 @@ function buildSampleBatch(formData) {
 async function submitIngest(event) {
   event.preventDefault();
   formMessage.textContent = "Submitting sample batch...";
-
   const formData = new FormData(ingestForm);
   const payload = buildSampleBatch(formData);
-
   try {
     const response = await fetchJson(`${API_BASE}/ingest`, {
       method: "POST",
@@ -450,7 +509,7 @@ async function submitIngest(event) {
     formMessage.textContent = `Accepted ${response.accepted} scans. Queue depth: ${response.queue_depth}.`;
     state.scans.offset = 0;
     state.alerts.offset = 0;
-    await new Promise((resolve) => setTimeout(resolve, 220));
+    await new Promise((resolve) => setTimeout(resolve, 240));
     await loadDashboard();
   } catch (error) {
     formMessage.textContent = `Ingestion failed: ${error.message}`;
@@ -462,7 +521,14 @@ themeToggleButton.addEventListener("click", () => {
   applyTheme(nextTheme);
 });
 
-refreshButton.addEventListener("click", () => {
+refreshButton.addEventListener("click", loadDashboard);
+analyticsApplyButton.addEventListener("click", () => {
+  syncAnalyticsFromUI();
+  loadDashboard();
+});
+
+apiKeyInput.addEventListener("change", () => {
+  persistApiKey();
   loadDashboard();
 });
 
@@ -504,7 +570,9 @@ alertsNextButton.addEventListener("click", () => {
 
 ingestForm.addEventListener("submit", submitIngest);
 
+loadApiKey();
 syncScansFiltersFromUI();
 syncAlertsFiltersFromUI();
+syncAnalyticsFromUI();
 loadPreferredTheme();
 loadDashboard();
