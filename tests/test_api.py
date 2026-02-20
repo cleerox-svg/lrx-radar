@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -178,7 +178,9 @@ def test_source_quota_enforced(tmp_path: Path) -> None:
 def test_trend_and_geo_analytics(tmp_path: Path) -> None:
     app = create_app(database_path=tmp_path / "analytics.db")
     payload = build_payload(size=3, source_id="station-alpha", scan_prefix="analytic")
+    now = datetime.now(timezone.utc)
     for idx, scan in enumerate(payload["scans"]):  # type: ignore[index]
+        scan["captured_at"] = (now - timedelta(minutes=idx * 5)).isoformat()
         scan["location"] = {"latitude": 14.61 + (idx * 0.01), "longitude": 121.02 + (idx * 0.01)}
     with TestClient(app) as client:
         assert client.post("/api/v1/ingest", json=payload, headers=AUTH_HEADERS).status_code == 202
