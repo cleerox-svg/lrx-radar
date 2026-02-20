@@ -115,6 +115,9 @@ If you deploy on Railway, `railway.toml` is included to force Dockerfile builds.
 For Cloudflare builds, set `PYTHON_VERSION=3.12` in project environment
 variables (or ensure `.python-version`/`.tool-versions` is respected).
 
+If Cloudflare runs a deploy command (`npx wrangler deploy`), keep `wrangler.jsonc`
+in repo root so Wrangler can publish static assets from `dist/`.
+
 ## Runtime configuration
 
 - `DATABASE_URL` - use `postgres://...` or `postgresql://...` for PostgreSQL mode
